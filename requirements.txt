@@ -1,0 +1,10 @@
+tweepy==3.8.0
+python-dotenv==0.10.3
+spacy==2.2.3
+redis
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.2.5/en_core_web_sm-2.2.5.tar.gz
+gunicorn==19.9.0
+APScheduler==3.5.3
+Flask==1.1.1
+requests
+rq==1.2.0

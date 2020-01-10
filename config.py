@@ -1,10 +1,10 @@
 import os
 import re
 
-import en_core_web_sm
 import tweepy
+from dotenv import load_dotenv
 
-nlp = en_core_web_sm.load()
+load_dotenv()
 
 CONSUMER_KEY = os.getenv('CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')

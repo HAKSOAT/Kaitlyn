@@ -1,14 +1,18 @@
-class QueryFetcher:
+from config import app_api
+
+
+class TweetFetcher:
     def __init__(self, text, recency=None):
         self.text = text
         self.recency = recency
         self.queries = []
+        self.tweets = []
 
     def create_entire_phrase_query(self):
         if self.recency:
-            query = f'"{self.text.lower()}"' + f'%3A{self.recency}' + "-filter:retweets"
+            query = f'"{self.text.text.lower()}"' + f'%3A{self.recency}' + "-filter:retweets"
         else:
-            query = f'"{self.text.lower()}"' + "-filter:retweets"
+            query = f'"{self.text.text.lower()}"' + "-filter:retweets"
 
         self.queries.append(query)
 
@@ -50,3 +54,13 @@ class QueryFetcher:
             query = "%20".join(query) + "-filter:retweets"
 
         self.queries.append(query)
+
+    def fetch_tweets(self):
+        for query in self.queries:
+            try:
+                self.tweets += app_api.search(q=query, include_entities=False, count=100,
+                                              result_type='mixed', tweet_mode='extended')
+            except:
+                pass
+
+        return self.tweets
