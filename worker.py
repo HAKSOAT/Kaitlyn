@@ -2,7 +2,7 @@ import os
 
 from rq import Worker, Queue, Connection
 
-from main import redis
+from app import redis
 
 listen = ['high', 'default', 'low']
 

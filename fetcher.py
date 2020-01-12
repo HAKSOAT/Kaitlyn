@@ -1,20 +1,38 @@
+import operator
+import logging
+
 from config import app_api
+from utils import ActionType, SearchType
+
+import tweepy
+
+logging.basicConfig(filename='app.log', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
 
 
 class TweetFetcher:
-    def __init__(self, text, recency=None):
+    def __init__(self, text, mode, tweet_date=None, tweet_datetime=None):
         self.text = text
-        self.recency = recency
+        self.mode = mode
+        self.tweet_date = tweet_date
+        self.tweet_datetime = tweet_datetime
         self.queries = []
         self.tweets = []
 
-    def create_entire_phrase_query(self):
-        if self.recency:
-            query = f'"{self.text.text.lower()}"' + f'%3A{self.recency}' + "-filter:retweets"
+    def format_query(self, query):
+        if self.tweet_date and self.mode == ActionType.old.value:
+            query = f'"{query}"' + f'until%3A{self.tweet_date}' + "-filter:retweets"
+        elif self.tweet_date and self.mode == ActionType.new.value:
+            query = f'"{query}"' + f'since%3A{self.tweet_date}' + "-filter:retweets"
         else:
-            query = f'"{self.text.text.lower()}"' + "-filter:retweets"
+            query = f'"{query}"' + "-filter:retweets"
 
-        self.queries.append(query)
+        return query
+
+    def create_entire_phrase_query(self):
+        query = self.text.text.lower()
+        formatted_query = self.format_query(query)
+        self.queries.append(formatted_query)
 
     def create_sentences_query(self):
         sentences = []
@@ -31,12 +49,8 @@ class TweetFetcher:
 
         query = "(" + query + ")"
 
-        if self.recency:
-            query = query + f'%3A{self.recency}' + "-filter:retweets"
-        else:
-            query = query + "-filter:retweets"
-
-        self.queries.append(query)
+        formatted_query = self.format_query(query)
+        self.queries.append(formatted_query)
 
     def create_words_query(self):
         pos = ['PROPN', 'NOUN', 'ADJ']
@@ -48,19 +62,51 @@ class TweetFetcher:
             if word.dep_ in dep or word.pos_ in pos:
                 query.append(word.text.lower())
 
-        if self.recency:
-            query = "%20".join(query) + f'%3A{self.recency}' + "-filter:retweets"
-        else:
-            query = "%20".join(query) + "-filter:retweets"
+        query = "%20".join(query)
 
-        self.queries.append(query)
+        formatted_query = self.format_query(query)
+        self.queries.append(formatted_query)
+
+    def filter_tweets_by_time(self, tweets, comparison):
+        filtered_tweets = []
+        for tweet in tweets:
+            if comparison(self.tweet_datetime, tweet.created_at):
+                filtered_tweets.append(tweet)
+
+        return filtered_tweets
+
+    @staticmethod
+    def search(queries, search_type):
+        tweets = []
+        for query in queries:
+            try:
+                tweets += app_api.search(q=query, include_entities=False, count=100,
+                                         result_type=search_type, tweet_mode='extended')
+            except tweepy.error.TweepError as e:
+                logging.error(e, exc_info=True)
+
+        return tweets
 
     def fetch_tweets(self):
-        for query in self.queries:
-            try:
-                self.tweets += app_api.search(q=query, include_entities=False, count=100,
-                                              result_type='mixed', tweet_mode='extended')
-            except:
-                pass
+        if self.mode == ActionType.old.value:
+            tweets = TweetFetcher.search(self.queries, SearchType.mixed.value)
+            self.tweets = self.filter_tweets_by_time(tweets, operator.gt)
+
+        elif self.mode == ActionType.new.value:
+            tweets = TweetFetcher.search(self.queries, SearchType.recent.value)
+            self.tweets = self.filter_tweets_by_time(tweets, operator.lt)
+
+        else:
+            tweets = TweetFetcher.search(self.queries, SearchType.mixed.value)
+            self.tweets = tweets
 
         return self.tweets
+
+
+def fetch(tweet_text, mode, tweet_date=None, tweet_datetime=None):
+    tweet_fetcher = TweetFetcher(tweet_text, mode, tweet_date, tweet_datetime)
+    tweet_fetcher.create_entire_phrase_query()
+    tweet_fetcher.create_sentences_query()
+    tweet_fetcher.create_words_query()
+    fetched_tweets = tweet_fetcher.fetch_tweets()
+    return fetched_tweets

@@ -1,11 +1,10 @@
+from enum import Enum
 import re
 import random
 
-import en_core_web_sm
+from config import oapi, nlp
 
-from config import oapi
 
-nlp = en_core_web_sm.load()
 
 no_clone_replies = ['No clone Found', 'E be like say clone no dey', 'The tweet looks original',
                     'Error 404: Clone not found', 'No copies yet', 'Nothing in sight',
@@ -35,37 +34,40 @@ clone_list_conclusions = ['\n\nThanks for trusting me', '\n\nThe results may not
                           ]
 
 no_reference_replies = ['I can\'t find a reference tweet', 'Wrong usage. There\'s no tweet to find clones for',
-                        'Please don\'t at me directly', 'There\'s no target tweet here']
+                        'There\'s no target tweet here']
 
 
-def check_eligibility(mention_text):
-    directive = re.search(r'go[ ]*@findclones', mention_text.lower())
-    if not directive:
-        return False
-    return True
+def get_action(mention_text):
+    directive = re.search(r'(go|old|new)[ ]*@findclones', mention_text.lower())
+    if directive and 'go' in directive.group():
+        return ActionType.go.value
+    elif directive and 'old' in directive.group():
+        return ActionType.old.value
+    elif directive and 'new' in directive.group():
+        return ActionType.new.value
+    else:
+        return None
 
 
 def remove_emojis(text):
-    return text.encode('ascii', 'ignore').decode('ascii')
+    return text.encode('ascii', 'ignore').decode('ascii').replace('\n', ' ')
 
 
 def remove_links(text):
     return re.sub(r'http(s)*[^ ]+', '', text)
 
 
+def process_tweet_text(text):
+    tweet_text = remove_emojis(text)
+    tweet_text = remove_links(tweet_text)
+    tweet_text = nlp(tweet_text.lower())
+    return tweet_text
+
+
 def compile_tweet_link(tweet):
     url = "https://twitter.com/"
     link = url + tweet.author.screen_name + "/status/" + str(tweet.id)
     return link
-
-
-def get_recency(mention):
-    recency_match = re.search(r'\d{4}-\d{2}-\d{2}', mention)
-    if recency_match:
-        recency = recency_match.group()
-        return recency
-    else:
-        return None
 
 
 def send_no_reference_tweet(mentioner):
@@ -77,6 +79,10 @@ def send_tweet(mentioner, mention_id, links, sent_tweet=None):
 
     if sent_tweet:
         tweet_text = sent_tweet
+
+        if type(tweet_text).__name__ == 'bytes':
+            tweet_text = tweet_text.decode('utf-8')
+
         oapi.update_status(f'@{mentioner} ' + tweet_text, in_reply_to_status_id=mention_id)
         return tweet_text
 
@@ -100,27 +106,33 @@ def send_tweet(mentioner, mention_id, links, sent_tweet=None):
 
 
 def get_most_similar_tweets(fetched_tweets, tweet_details, amount):
-    rankings = []
+    tweets_by_rank = []
     ids = [tweet_details['id']]
     boundary = 15
     for tweet in fetched_tweets:
-        if tweet.id not in ids:
-            fetched_tweet_text = nlp(tweet.full_text.lower())
-            if -boundary < len(tweet_details['text']) - len(fetched_tweet_text) < boundary:
-                if tweet_details['text'].similarity(fetched_tweet_text) > 0.7:
-                    rankings.append((tweet, tweet_details['text'].similarity(fetched_tweet_text)))
-                    ids.append(tweet.id)
-    rankings.sort(key=lambda x: x[1], reverse=True)
-    rankings = [tweet for tweet, score in rankings[:amount]]
-    return rankings
+        if tweet.id in ids:
+            continue
+
+        fetched_tweet_text = nlp(tweet.full_text.lower())
+        if -boundary > len(tweet_details['text']) - len(fetched_tweet_text) > boundary:
+            continue
+
+        if tweet_details['text'].similarity(fetched_tweet_text) > 0.7:
+            tweets_by_rank.append((tweet, tweet_details['text'].similarity(fetched_tweet_text)))
+            ids.append(tweet.id)
+
+    tweets_by_rank.sort(key=lambda x: x[1], reverse=True)
+    top_x_tweets_by_rank = [tweet for tweet, score in tweets_by_rank[:amount]]
+    return top_x_tweets_by_rank
 
 
-def save_last_mention_id(filepath, mention_id):
-    with open(filepath, 'w') as file:
-        file.write(str(mention_id))
+class ActionType(Enum):
+    go = 'go'
+    old = 'old'
+    new = 'new'
 
 
-def read_last_mention_id(filepath):
-    with open(filepath, 'r') as file:
-        mention_id = file.read()
-        return mention_id
+class SearchType(Enum):
+    mixed = 'mixed'
+    recent = 'recent'
+    popular = 'popular'
