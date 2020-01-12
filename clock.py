@@ -1,8 +1,8 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
 from rq import Queue
 
-from app import run
-from config import redis
+from app.app import run
+from app.config import redis
 
 q = Queue(connection=redis)
 

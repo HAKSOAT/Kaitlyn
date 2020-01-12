@@ -1,9 +1,8 @@
-import os
 import logging
 
-from config import oapi, app_api, redis, LAST_MENTION_ID
-from fetcher import fetch
-from utils import compile_tweet_link, process_tweet_text, get_most_similar_tweets, send_tweet, \
+from app.config import oapi, app_api, redis, LAST_MENTION_ID
+from app.fetcher import fetch
+from app.utils import compile_tweet_link, process_tweet_text, get_most_similar_tweets, send_tweet, \
     get_action, ActionType, send_no_reference_tweet
 
 import tweepy
