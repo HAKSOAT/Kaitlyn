@@ -42,8 +42,8 @@ def run():
             tweet = app_api.get_status(mention.in_reply_to_status_id, tweet_mode='extended')
         except tweepy.error.TweepError as e:
             logging.error(e, exc_info=True)
-            if e[0]['code'] == 144:
-                send_no_reference_tweet(mentioner)
+            if e.args[0][0]['code'] == 144:
+                send_no_reference_tweet(mentioner, mention_id)
             continue
 
         tweet_id = tweet.id

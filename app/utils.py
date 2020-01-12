@@ -1,17 +1,16 @@
 from enum import Enum
 import re
-import random
+import secrets
 
 from app.config import oapi, nlp
 
 
-
-no_clone_replies = ['No clone Found', 'E be like say clone no dey', 'The tweet looks original',
-                    'Error 404: Clone not found', 'No copies yet', 'Nothing in sight',
-                    'I couldn\'t find clones', 'Clean for now, but the future is not certain',
-                    'It\'s as clean as Arsenal\'s trophy cabinet', 'I found nothing', 'I\'m at peace with this tweet',
-                    'No clones at this time', 'I\'ve not seen any tweet of this kind', 'No clone in sight',
-                    'Aye! Master! It looks clean'
+no_clone_replies = ['No clone Found.', 'E be like say clone no dey.', 'The tweet looks original.',
+                    'Error 404: Clone not found.', 'No copies yet.', 'Nothing in sight.',
+                    'I couldn\'t find clones.', 'Clean for now, but the future is not certain.',
+                    'It\'s as clean as Arsenal\'s trophy cabinet.', 'I found nothing.', 'I\'m at peace with this tweet.',
+                    'No clones at this time.', 'I\'ve not seen any tweet of this kind.', 'No clone in sight.',
+                    'Aye! Master! It looks clean.'
                     ]
 
 clone_list_introductions = ['Possible clones are: \n\n', 'These tweets look similar: \n\n',
@@ -70,9 +69,9 @@ def compile_tweet_link(tweet):
     return link
 
 
-def send_no_reference_tweet(mentioner):
-    tweet_text = random.choice(no_reference_replies)
-    oapi.update_status(f'@{mentioner} ' + tweet_text)
+def send_no_reference_tweet(mentioner, mention_id):
+    tweet_text = secrets.choice(no_reference_replies)
+    oapi.update_status(f'@{mentioner} {tweet_text}', in_reply_to_status_id=mention_id)
 
 
 def send_tweet(mentioner, mention_id, links, sent_tweet=None):
@@ -88,16 +87,21 @@ def send_tweet(mentioner, mention_id, links, sent_tweet=None):
 
     if links:
         link_count = len(links)
-        tweet_text = random.choice(clone_list_introductions)
+        tweet_text = secrets.choice(clone_list_introductions)
 
         for link in links[::-1]:
             tweet_text += f"{link_count}: {link}\n"
             link_count -= 1
 
-        tweet_text += random.choice(clone_list_conclusions)
+        tweet_text += secrets.choice(clone_list_conclusions)
 
     else:
-        tweet_text = random.choice(no_clone_replies)
+        tweet_text = secrets.choice(no_clone_replies)
+        combo = secrets.choice(no_clone_replies)
+        while combo == tweet_text:
+            combo = secrets.choice(no_clone_replies)
+
+        tweet_text = f'{tweet_text} {combo}'
 
     if type(tweet_text).__name__ == 'bytes':
         tweet_text = tweet_text.decode('utf-8')

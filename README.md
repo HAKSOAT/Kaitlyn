@@ -36,7 +36,7 @@ as a comment on a tweet to fetch all clones of that tweet, regardless of when th
 
 To use on computer, ensure that you have Python 3 installed.
 
-Assign proper values to the environment variables.
+Assign proper values to the environment variables in the .env file.
 
 Run:
 
@@ -44,13 +44,13 @@ Run:
 pip install -r requirements.txt
 ```
 
-Run on terminal 
+Run on terminal 1: 
 
 ```
 python worker.py
 ```
 
-Run
+Run on terminal 2:
 
 ```
 python clock.py
@@ -71,7 +71,7 @@ Contributions are welcomed.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Apache 2.0 License - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
